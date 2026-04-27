@@ -205,7 +205,7 @@ const App = () => {
         </div>
         <div className="hidden sm:block">
           <h1 className={`font-extrabold text-lg tracking-tight leading-tight ${darkMode ? 'text-slate-100' : 'text-slate-800'}`}>Cintalembur</h1>
-          <p className="text-[10px] font-medium text-slate-500">Appby_Amarmuhammad</p>
+          <p className="text-[10px] font-medium text-slate-500">Lingkungan Pintar</p>
         </div>
       </div>
       <div className="flex items-center gap-2 sm:gap-4">
@@ -249,7 +249,6 @@ const App = () => {
           <LogOut className="w-5 h-5" /> Keluar dari Aplikasi
         </button>
       </div>
-      <p className="text-center text-slate-400 text-[10px] font-bold mt-8 uppercase tracking-[0.2em]">Cintalembur v2.0 - Security Enabled</p>
     </div>
   );
 
@@ -357,7 +356,7 @@ const App = () => {
     const handlePhotoUpload = (e) => {
       const file = e.target.files[0];
       if (file) { 
-        if(file.size > 2000000) return showToast('Peringatan: Ukuran foto maksimal 2MB untuk kelancaran database!');
+        if(file.size > 2000000) return showToast('Peringatan: Ukuran foto maksimal 2MB!');
         const reader = new FileReader(); 
         reader.onloadend = () => setPhoto(reader.result); 
         reader.readAsDataURL(file); 
@@ -901,27 +900,26 @@ const App = () => {
 
       {/* --- AUTH SCREENS (DENGAN ANIMASI GESER) --- */}
       {(!currentUser) && (
-        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-5 bg-inherit">
+        <div className="fixed inset-0 flex items-center justify-center p-4 sm:p-5 bg-inherit overflow-hidden">
           
-          {/* PERBAIKAN: Menggunakan Flex Horizontal Layout agar scroll tidak terpotong */}
-          <div className={`w-full max-w-[400px] max-h-[95vh] flex flex-col rounded-[2.5rem] shadow-2xl relative border transition-colors duration-500 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-white'}`}>
+          <div className={`w-full max-w-[400px] h-[90vh] max-h-[720px] flex flex-col rounded-[2.5rem] shadow-2xl relative border transition-colors duration-500 ${darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-white'}`}>
             <div className="absolute -top-20 -right-20 w-48 h-48 bg-emerald-400/20 rounded-full blur-3xl pointer-events-none"></div>
             <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-teal-400/20 rounded-full blur-3xl pointer-events-none"></div>
 
             <div className="overflow-x-hidden overflow-y-auto w-full relative z-10 flex-1 rounded-[2.5rem]">
                <div 
-                 className="flex transition-transform duration-500 ease-in-out w-[200%] items-start"
+                 className="flex transition-transform duration-500 ease-in-out w-[200%] items-start min-h-full"
                  style={{ transform: view === 'login' ? 'translateX(0)' : 'translateX(-50%)' }}
                >
                   {/* LOGIN PANE */}
-                  <div className="w-1/2 p-6 sm:p-8 flex flex-col min-h-full">
+                  <div className="w-1/2 p-6 sm:p-8 flex flex-col justify-center min-h-full pt-12">
                     <div className="text-center mb-8 mt-2">
                       <div className="w-20 h-20 bg-gradient-to-br from-teal-400 to-emerald-600 text-white rounded-[1.5rem] flex items-center justify-center mx-auto mb-5 shadow-xl shadow-emerald-200/50"><Home className="w-10 h-10" /></div>
                       <h1 className={`text-3xl font-extrabold mb-1 tracking-tight ${darkMode ? 'text-white' : 'text-slate-800'}`}>Cintalembur</h1>
                       <p className="text-sm text-slate-500 font-medium">Selamat Datang Kembali.</p>
                     </div>
                     
-                    <form onSubmit={handleLogin} className="space-y-5 flex-1">
+                    <form onSubmit={handleLogin} className="space-y-5">
                       <input type="text" value={loginEmail} onChange={(e)=>setLoginEmail(e.target.value)} placeholder="Email / rt@cintalembur.com" className={`w-full p-4 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
                       <input type="password" value={loginPassword} onChange={(e)=>setLoginPassword(e.target.value)} placeholder="Password Akun / Password RT" className={`w-full p-4 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
                       <button type="submit" className="w-full bg-slate-800 hover:bg-slate-900 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all mt-2">Masuk ke Aplikasi</button>
@@ -933,12 +931,12 @@ const App = () => {
                   </div>
 
                   {/* REGISTER PANE */}
-                  <div className="w-1/2 p-6 sm:p-8 flex flex-col min-h-full">
+                  <div className="w-1/2 p-6 sm:p-8 flex flex-col justify-start min-h-full pt-8">
                     <h2 className={`text-2xl font-extrabold mb-2 mt-2 ${darkMode ? 'text-white' : 'text-slate-800'}`}>{otpSent ? 'Verifikasi OTP' : 'Daftar Warga Baru'}</h2>
                     <p className="text-sm text-slate-500 mb-6">{otpSent ? `Kode 6 digit telah dikirim ke email Anda.` : 'Lengkapi data resmi untuk bergabung.'}</p>
                     
                     {!otpSent ? (
-                      <form onSubmit={startRegistration} className="space-y-4 flex-1">
+                      <form onSubmit={startRegistration} className="space-y-4">
                         <input type="text" value={regData.nama} onChange={(e)=>setRegData({...regData, nama: e.target.value})} placeholder="Nama Lengkap Sesuai KTP" className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
                         <input type="number" value={regData.nik} onChange={(e)=>setRegData({...regData, nik: e.target.value})} placeholder="Nomor Induk Kependudukan (NIK)" className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
                         <div className="grid grid-cols-2 gap-4">
@@ -953,7 +951,7 @@ const App = () => {
                         <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg mt-2 active:scale-95 transition-all">Minta Kode OTP</button>
                       </form>
                     ) : (
-                      <div className="space-y-6 flex-1">
+                      <div className="space-y-6">
                         <input type="number" value={inputOtp} onChange={(e)=>setInputOtp(e.target.value)} placeholder="000000" className={`w-full p-5 text-center text-3xl font-extrabold tracking-[0.5em] rounded-2xl outline-none border-2 focus:border-emerald-500 transition-all ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`} />
                         <button onClick={verifyOtpAndRegister} disabled={isLoadingDB} className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex justify-center">
                           {isLoadingDB ? <Loader2 className="w-6 h-6 animate-spin"/> : 'Verifikasi OTP & Daftar'}
@@ -1014,13 +1012,12 @@ const App = () => {
             <button onClick={fetchDataFromDB} disabled={isLoadingDB} className="md:hidden fixed bottom-24 right-5 bg-emerald-600 p-3 rounded-full shadow-lg text-white z-40"><RefreshCw className={`w-6 h-6 ${isLoadingDB ? 'animate-spin' : ''}`} /></button>
             <HeaderDashboard />
             
-            {/* PERBAIKAN: Mengatur agar main content memiliki flex column dan menambahkan footer Appby_Amarmuhammad di dasar */}
             <main className="flex-1 w-full max-w-5xl mx-auto px-5 pb-8 pt-4 md:px-8 flex flex-col">
               {renderContent()}
 
               {/* TANDA AIR (WATERMARK) DI SETIAP MENU APLIKASI */}
               <div className="mt-auto pt-16 pb-4 text-center">
-                <p className={`text-[11px] font-extrabold tracking-[0.25em] uppercase ${darkMode ? 'text-slate-700' : 'text-slate-300'}`}>
+                <p className={`text-[11px] font-extrabold tracking-[0.25em] uppercase ${darkMode ? 'text-slate-700' : 'text-slate-400'}`}>
                   Appby_Amarmuhammad
                 </p>
               </div>
