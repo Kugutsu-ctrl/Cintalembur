@@ -10,7 +10,8 @@ import {
 
 // --- KONFIGURASI DATABASE & API ---
 const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/y13eb6zpj32ow';
-const GEMINI_API_KEY = ''; // Masukkan API Key Gemini Anda di sini
+const GEMINI_API_KEY = 'AIzaSyBB47BOftmEANAy3lPtUYK3t2G1Wthp5B8'; 
+const GOOGLE_SCRIPT_URL = 'PASTE_URL_GOOGLE_SCRIPT_ANDA_DI_SINI'; // Wajib diisi dengan URL Deploy Google Script Anda
 
 const callGeminiAPI = async (prompt) => {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
@@ -134,17 +135,36 @@ const App = () => {
     }
   };
 
-  const startRegistration = (e) => {
+  const startRegistration = async (e) => { 
     e.preventDefault();
     if (!regData.nama || !regData.email || !regData.password || !regData.nik || !regData.umur) return showToast('Lengkapi semua data pendaftaran!');
     if (wargaList.some(w => w.email === regData.email)) return showToast('Email sudah terdaftar!');
     
-    // Generate 6 digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    setGeneratedOtp(otp);
-    setOtpSent(true);
-    console.log("KODE OTP ANDA:", otp); // Ditampilkan di console untuk prototype
-    showToast(`Kirim OTP ke ${regData.email}... (Cek Console / Toast)`);
+    setIsLoadingDB(true); 
+    showToast('Sedang memproses pengiriman OTP...');
+
+    try {
+      const response = await fetch(GOOGLE_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ email: regData.email })
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        setGeneratedOtp(data.otp); 
+        setOtpSent(true);          
+        showToast(`Silakan cek email: ${regData.email}`);
+      } else {
+        showToast('❌ Gagal: ' + data.message);
+      }
+    } catch (error) {
+      showToast('❌ Gagal terhubung ke server email.');
+      console.error(error);
+    } finally {
+      setIsLoadingDB(false); 
+    }
   };
 
   const verifyOtpAndRegister = async () => {
@@ -911,61 +931,61 @@ const App = () => {
                  className="flex transition-transform duration-500 ease-in-out w-[200%] items-start min-h-full"
                  style={{ transform: view === 'login' ? 'translateX(0)' : 'translateX(-50%)' }}
                >
-                  {/* LOGIN PANE */}
-                  <div className="w-1/2 p-6 sm:p-8 flex flex-col justify-center min-h-full pt-12">
-                    <div className="text-center mb-8 mt-2">
-                      <div className="w-20 h-20 bg-gradient-to-br from-teal-400 to-emerald-600 text-white rounded-[1.5rem] flex items-center justify-center mx-auto mb-5 shadow-xl shadow-emerald-200/50"><Home className="w-10 h-10" /></div>
-                      <h1 className={`text-3xl font-extrabold mb-1 tracking-tight ${darkMode ? 'text-white' : 'text-slate-800'}`}>Cintalembur</h1>
-                      <p className="text-sm text-slate-500 font-medium">Selamat Datang Kembali.</p>
-                    </div>
-                    
-                    <form onSubmit={handleLogin} className="space-y-5">
-                      <input type="text" value={loginEmail} onChange={(e)=>setLoginEmail(e.target.value)} placeholder="Email / rt@cintalembur.com" className={`w-full p-4 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
-                      <input type="password" value={loginPassword} onChange={(e)=>setLoginPassword(e.target.value)} placeholder="Password Akun / Password RT" className={`w-full p-4 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
-                      <button type="submit" className="w-full bg-slate-800 hover:bg-slate-900 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all mt-2">Masuk ke Aplikasi</button>
-                    </form>
-                    
-                    <div className="text-center mt-8 pb-4">
-                      <p className="text-sm text-slate-500">Warga baru? <button type="button" onClick={() => { setView('register'); setOtpSent(false); }} className="text-emerald-600 font-extrabold hover:underline">Daftar Akun</button></p>
-                    </div>
-                  </div>
+                 {/* LOGIN PANE */}
+                 <div className="w-1/2 p-6 sm:p-8 flex flex-col justify-center min-h-full pt-12">
+                   <div className="text-center mb-8 mt-2">
+                     <div className="w-20 h-20 bg-gradient-to-br from-teal-400 to-emerald-600 text-white rounded-[1.5rem] flex items-center justify-center mx-auto mb-5 shadow-xl shadow-emerald-200/50"><Home className="w-10 h-10" /></div>
+                     <h1 className={`text-3xl font-extrabold mb-1 tracking-tight ${darkMode ? 'text-white' : 'text-slate-800'}`}>Cintalembur</h1>
+                     <p className="text-sm text-slate-500 font-medium">Selamat Datang Kembali.</p>
+                   </div>
+                   
+                   <form onSubmit={handleLogin} className="space-y-5">
+                     <input type="text" value={loginEmail} onChange={(e)=>setLoginEmail(e.target.value)} placeholder="Email / rt@cintalembur.com" className={`w-full p-4 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
+                     <input type="password" value={loginPassword} onChange={(e)=>setLoginPassword(e.target.value)} placeholder="Password Akun / Password RT" className={`w-full p-4 rounded-2xl outline-none focus:ring-2 focus:ring-emerald-500/20 text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
+                     <button type="submit" className="w-full bg-slate-800 hover:bg-slate-900 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all mt-2">Masuk ke Aplikasi</button>
+                   </form>
+                   
+                   <div className="text-center mt-8 pb-4">
+                     <p className="text-sm text-slate-500">Warga baru? <button type="button" onClick={() => { setView('register'); setOtpSent(false); }} className="text-emerald-600 font-extrabold hover:underline">Daftar Akun</button></p>
+                   </div>
+                 </div>
 
-                  {/* REGISTER PANE */}
-                  <div className="w-1/2 p-6 sm:p-8 flex flex-col justify-start min-h-full pt-8">
-                    <h2 className={`text-2xl font-extrabold mb-2 mt-2 ${darkMode ? 'text-white' : 'text-slate-800'}`}>{otpSent ? 'Verifikasi OTP' : 'Daftar Warga Baru'}</h2>
-                    <p className="text-sm text-slate-500 mb-6">{otpSent ? `Kode 6 digit telah dikirim ke email Anda.` : 'Lengkapi data resmi untuk bergabung.'}</p>
-                    
-                    {!otpSent ? (
-                      <form onSubmit={startRegistration} className="space-y-4">
-                        <input type="text" value={regData.nama} onChange={(e)=>setRegData({...regData, nama: e.target.value})} placeholder="Nama Lengkap Sesuai KTP" className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
-                        <input type="number" value={regData.nik} onChange={(e)=>setRegData({...regData, nik: e.target.value})} placeholder="Nomor Induk Kependudukan (NIK)" className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
-                        <div className="grid grid-cols-2 gap-4">
-                          <input type="number" value={regData.umur} onChange={(e)=>setRegData({...regData, umur: e.target.value})} placeholder="Umur" className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
-                          <select value={regData.sebutan} onChange={(e)=>setRegData({...regData, sebutan: e.target.value})} className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200 text-slate-600'}`}>
-                            <option value="Bapak">Bapak</option><option value="Ibu">Ibu</option><option value="Saudara">Sdr/Sdri</option>
-                          </select>
-                        </div>
-                        <input type="email" value={regData.email} onChange={(e)=>setRegData({...regData, email: e.target.value})} placeholder="Alamat Email Aktif" className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
-                        <input type="password" value={regData.password} onChange={(e)=>setRegData({...regData, password: e.target.value})} placeholder="Buat Password" className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
-                        
-                        <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg mt-2 active:scale-95 transition-all">Minta Kode OTP</button>
-                      </form>
-                    ) : (
-                      <div className="space-y-6">
-                        <input type="number" value={inputOtp} onChange={(e)=>setInputOtp(e.target.value)} placeholder="000000" className={`w-full p-5 text-center text-3xl font-extrabold tracking-[0.5em] rounded-2xl outline-none border-2 focus:border-emerald-500 transition-all ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`} />
-                        <button onClick={verifyOtpAndRegister} disabled={isLoadingDB} className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex justify-center">
-                          {isLoadingDB ? <Loader2 className="w-6 h-6 animate-spin"/> : 'Verifikasi OTP & Daftar'}
-                        </button>
-                        <button type="button" onClick={()=>setOtpSent(false)} className="w-full text-sm text-slate-500 font-bold hover:underline">Ubah Data Pendaftaran</button>
-                      </div>
-                    )}
-                    
-                    <div className="mt-8 pb-4">
-                      <button type="button" onClick={() => setView('login')} className="text-sm text-slate-500 font-bold w-full text-center hover:text-slate-800 transition-colors">
-                        ← Kembali ke Halaman Login
-                      </button>
-                    </div>
-                  </div>
+                 {/* REGISTER PANE */}
+                 <div className="w-1/2 p-6 sm:p-8 flex flex-col justify-start min-h-full pt-8">
+                   <h2 className={`text-2xl font-extrabold mb-2 mt-2 ${darkMode ? 'text-white' : 'text-slate-800'}`}>{otpSent ? 'Verifikasi OTP' : 'Daftar Warga Baru'}</h2>
+                   <p className="text-sm text-slate-500 mb-6">{otpSent ? `Kode 6 digit telah dikirim ke email Anda.` : 'Lengkapi data resmi untuk bergabung.'}</p>
+                   
+                   {!otpSent ? (
+                     <form onSubmit={startRegistration} className="space-y-4">
+                       <input type="text" value={regData.nama} onChange={(e)=>setRegData({...regData, nama: e.target.value})} placeholder="Nama Lengkap Sesuai KTP" className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
+                       <input type="number" value={regData.nik} onChange={(e)=>setRegData({...regData, nik: e.target.value})} placeholder="Nomor Induk Kependudukan (NIK)" className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
+                       <div className="grid grid-cols-2 gap-4">
+                         <input type="number" value={regData.umur} onChange={(e)=>setRegData({...regData, umur: e.target.value})} placeholder="Umur" className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
+                         <select value={regData.sebutan} onChange={(e)=>setRegData({...regData, sebutan: e.target.value})} className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200 text-slate-600'}`}>
+                           <option value="Bapak">Bapak</option><option value="Ibu">Ibu</option><option value="Saudara">Sdr/Sdri</option>
+                         </select>
+                       </div>
+                       <input type="email" value={regData.email} onChange={(e)=>setRegData({...regData, email: e.target.value})} placeholder="Alamat Email Aktif" className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
+                       <input type="password" value={regData.password} onChange={(e)=>setRegData({...regData, password: e.target.value})} placeholder="Buat Password" className={`w-full p-4 rounded-2xl outline-none text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
+                       
+                       <button type="submit" className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg mt-2 active:scale-95 transition-all">Minta Kode OTP</button>
+                     </form>
+                   ) : (
+                     <div className="space-y-6">
+                       <input type="number" value={inputOtp} onChange={(e)=>setInputOtp(e.target.value)} placeholder="000000" className={`w-full p-5 text-center text-3xl font-extrabold tracking-[0.5em] rounded-2xl outline-none border-2 focus:border-emerald-500 transition-all ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`} />
+                       <button onClick={verifyOtpAndRegister} disabled={isLoadingDB} className="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex justify-center">
+                         {isLoadingDB ? <Loader2 className="w-6 h-6 animate-spin"/> : 'Verifikasi OTP & Daftar'}
+                       </button>
+                       <button type="button" onClick={()=>setOtpSent(false)} className="w-full text-sm text-slate-500 font-bold hover:underline">Ubah Data Pendaftaran</button>
+                     </div>
+                   )}
+                   
+                   <div className="mt-8 pb-4">
+                     <button type="button" onClick={() => setView('login')} className="text-sm text-slate-500 font-bold w-full text-center hover:text-slate-800 transition-colors">
+                       ← Kembali ke Halaman Login
+                     </button>
+                   </div>
+                 </div>
                </div>
             </div>
           </div>
