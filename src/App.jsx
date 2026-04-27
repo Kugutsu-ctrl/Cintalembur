@@ -11,7 +11,7 @@ import {
 // --- KONFIGURASI DATABASE & API ---
 const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/y13eb6zpj32ow';
 const GEMINI_API_KEY = 'AIzaSyBB47BOftmEANAy3lPtUYK3t2G1Wthp5B8'; 
-const GOOGLE_SCRIPT_URL = 'PASTE_URL_GOOGLE_SCRIPT_ANDA_DI_SINI'; // Wajib diisi dengan URL Deploy Google Script Anda
+const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzMq7pf58pWFqm3uB4suBkjm-Z6o0TH-kIsU4FG19Y3Fjn5Ukd-mJL1OSqpM7znsdVb1w/exec'; // Wajib diisi dengan URL Deploy Google Script Anda
 
 const callGeminiAPI = async (prompt) => {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
