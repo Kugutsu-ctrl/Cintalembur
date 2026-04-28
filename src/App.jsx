@@ -5,13 +5,14 @@ import {
   Camera, Image as ImageIcon, Bell, Wallet, LogOut, ArrowRight,
   Info, FileText, Activity, Users, PieChart, CalendarDays, Star,
   Sparkles, Loader2, Gift, Lightbulb, TrendingUp, ChevronRight, 
-  RefreshCw, Moon, Sun, ShieldCheck, Mail
+  RefreshCw, Moon, Sun, ShieldCheck, Mail, Megaphone, CalendarClock
 } from 'lucide-react';
 
 // --- KONFIGURASI DATABASE & API ---
 const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/y13eb6zpj32ow';
 const GEMINI_API_KEY = 'AIzaSyBB47BOftmEANAy3lPtUYK3t2G1Wthp5B8';
 
+// --- FUNGSI AI YANG SUDAH DIPERBARUI UNTUK MENANGKAP ERROR ---
 const callGeminiAPI = async (prompt) => {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
   const payload = { contents: [{ parts: [{ text: prompt }] }] };
@@ -21,16 +22,21 @@ const callGeminiAPI = async (prompt) => {
       headers: { 'Content-Type': 'application/json' }, 
       body: JSON.stringify(payload) 
     });
+    
     if (!response.ok) {
       const errorData = await response.json();
       console.error("Detail Error Gemini dari Google:", errorData);
-      throw new Error(`Error API: ${response.status}`);
+      // Tangkap pesan error spesifik dari Google
+      const errorMessage = errorData.error?.message || `HTTP Error ${response.status}`;
+      return { success: false, error: errorMessage };
     }
+    
     const data = await response.json();
-    return data.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    return { success: true, text: text };
   } catch (error) {
     console.error("Gemini API gagal dieksekusi:", error);
-    return null;
+    return { success: false, error: "Gagal menyambung ke server Google AI" };
   }
 };
 
@@ -43,7 +49,7 @@ const App = () => {
   const [isLoadingDB, setIsLoadingDB] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
-  // --- STATE FORMS (Diletakkan di atas agar tidak mereset saat refresh) ---
+  // --- STATE FORMS ---
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginRole, setLoginRole] = useState('warga'); 
@@ -101,7 +107,7 @@ const App = () => {
   const [ratings, setRatings] = useState([]);
 
   // --- FUNGSI HELPER ---
-  const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(''), 3000); };
+  const showToast = (msg) => { setToastMessage(msg); setTimeout(() => setToastMessage(''), 4000); };
   const formatRupiah = (number) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(number);
   const isPenerimaBantuan = (namaWarga) => infos.some(info => info.type === 'Bantuan Sosial' && info.target === namaWarga);
   const totalKas = finances.reduce((acc, curr) => curr.type === 'Pemasukan' ? acc + parseInt(curr.amount || 0) : acc - parseInt(curr.amount || 0), 0);
@@ -164,21 +170,17 @@ const App = () => {
   // Muat data saat aplikasi pertama buka
   useEffect(() => { fetchDataFromDB(true); }, []);
 
-  // --- AUTO REFRESH KHUSUS HALAMAN RT (Tidak Delay) ---
+  // --- AUTO REFRESH GLOBAL (Anti-Delay untuk Semua Info & Keluhan) ---
   useEffect(() => {
     let intervalId;
-    // Hanya menarik data diam-diam (tanpa loading) setiap 5 detik agar RT langsung melihat keluhan masuk
-    if (currentUser?.role === 'rt' && activeTab === 'keluhan') {
-      intervalId = setInterval(async () => {
-        try {
-          const res = await fetch(`${SHEETDB_API_URL}?sheet=keluhan`);
-          const data = await res.json();
-          if (Array.isArray(data)) setComplaints(data.reverse());
-        } catch (e) {} // Abaikan diam-diam jika gagal
-      }, 5000); 
+    if (currentUser) {
+      // Polling diam-diam setiap 15 detik agar semua data ter-update
+      intervalId = setInterval(() => {
+        fetchDataFromDB(false); 
+      }, 15000); 
     }
     return () => clearInterval(intervalId);
-  }, [currentUser, activeTab]);
+  }, [currentUser]);
 
   // --- AUTH & OTP HANDLERS ---
   const handleLogin = (e) => {
@@ -236,7 +238,7 @@ const App = () => {
   const renderHeaderDashboard = () => (
     <div className={`backdrop-blur-xl sticky top-0 z-30 px-5 py-4 border-b flex justify-between items-center mb-6 md:rounded-b-3xl md:mx-4 transition-colors duration-300 ${darkMode ? 'bg-slate-900/80 border-slate-800 shadow-none' : 'bg-white/70 border-slate-100/50 shadow-[0_2px_10px_rgb(0,0,0,0.02)]'}`}>
       <div className="flex items-center gap-3">
-        <div className={`w-10 h-10 rounded-xl shadow-lg flex items-center justify-center text-white bg-gradient-to-br ${darkMode ? 'from-teal-600 to-emerald-800' : 'from-teal-400 to-emerald-600'}`}>
+        <div className={`w-10 h-10 rounded-xl shadow-lg flex items-center justify-center text-white bg-gradient-to-br ${darkMode ? 'from-teal-600 to-emerald-800' : 'from-blue-600 to-teal-500'}`}>
           <Home className="w-5 h-5" />
         </div>
         <div className="hidden sm:block">
@@ -262,7 +264,7 @@ const App = () => {
   const renderProfilView = () => (
     <div className="animate-in fade-in zoom-in-95 duration-500 max-w-2xl mx-auto">
       <div className={`p-8 rounded-[2.5rem] border text-center transition-colors duration-300 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-xl'}`}>
-        <div className="w-24 h-24 bg-gradient-to-tr from-emerald-400 to-teal-600 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-lg transform -rotate-3"><User className="w-12 h-12 text-white" /></div>
+        <div className={`w-24 h-24 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-lg transform -rotate-3 ${darkMode ? 'bg-gradient-to-tr from-teal-600 to-indigo-800' : 'bg-gradient-to-tr from-blue-500 to-teal-400'}`}><User className="w-12 h-12 text-white" /></div>
         <h2 className={`text-2xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>{currentUser?.nama || currentUser?.name}</h2>
         <p className="text-emerald-500 font-bold mb-8 uppercase tracking-widest text-xs mt-1">{currentUser?.role === 'rt' ? 'Pengurus Lingkungan' : 'Warga Cintalembur'}</p>
         <div className="space-y-3 text-left">
@@ -289,72 +291,97 @@ const App = () => {
 
     return (
       <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-3xl mx-auto space-y-8">
-        <div className="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-[2rem] p-8 text-white shadow-xl shadow-emerald-200/20 relative overflow-hidden">
-          <div className="relative z-10">
-            <h2 className="text-3xl font-extrabold mb-1">Halo, {currentUser?.name?.split(' ')[0]}! 👋</h2>
-            <p className="text-emerald-50 text-sm font-medium max-w-sm">Selamat datang di Cintalembur. Mari bersama ciptakan lingkungan yang rukun, aman, dan nyaman.</p>
+        
+        {/* WIDGET GREETING PREMIUM */}
+        <div className={`rounded-[2rem] p-8 text-white shadow-xl relative overflow-hidden ${darkMode ? 'bg-gradient-to-br from-indigo-900 via-slate-800 to-teal-900 shadow-indigo-900/20' : 'bg-gradient-to-br from-blue-600 via-teal-500 to-emerald-500 shadow-teal-500/30'}`}>
+          <div className="relative z-10 flex justify-between items-center">
+            <div>
+              <p className="text-teal-100 text-xs font-bold uppercase tracking-wider mb-1">Beranda Warga</p>
+              <h2 className="text-3xl sm:text-4xl font-extrabold mb-2">Halo, {currentUser?.name?.split(' ')[0]}! 👋</h2>
+              <p className="text-teal-50 text-sm font-medium max-w-xs leading-relaxed">Selamat datang di Cintalembur. Mari bersama ciptakan lingkungan yang aman dan nyaman.</p>
+            </div>
+            {/* Widget Kas Mini */}
+            <div className="hidden sm:block text-right bg-white/10 p-4 rounded-2xl backdrop-blur-md border border-white/20">
+              <p className="text-xs text-teal-100 font-medium mb-1">Total Uang Kas</p>
+              <p className="font-extrabold text-xl">{formatRupiah(totalKas)}</p>
+            </div>
           </div>
-          <div className="absolute -bottom-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-2xl"></div><div className="absolute top-0 right-10 w-24 h-24 bg-teal-300/20 rounded-full blur-xl"></div>
+          {/* Ornamen Mewah */}
+          <div className="absolute -bottom-16 -right-16 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="absolute -top-10 -left-10 w-32 h-32 bg-teal-300/20 rounded-full blur-2xl"></div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3 md:gap-5">
-          <button onClick={() => setActiveTab('lapor')} className={`flex flex-col items-center justify-center p-4 md:p-5 rounded-3xl border hover:shadow-md transition-all active:scale-95 group ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]'}`}>
-            <div className="w-12 h-12 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mb-3 group-hover:bg-blue-500 group-hover:text-white transition-colors"><MessageSquare className="w-6 h-6" /></div>
-            <span className={`text-[10px] md:text-xs font-bold text-center ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Lapor RT</span>
+        {/* QUICK ACCESS MENU RE-DESIGN */}
+        <div className="grid grid-cols-4 gap-3 sm:gap-5">
+          <button onClick={() => setActiveTab('lapor')} className={`flex flex-col items-center justify-center p-4 sm:p-5 rounded-3xl border hover:shadow-lg transition-all active:scale-95 group ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-colors ${darkMode ? 'bg-blue-500/20 text-blue-400 group-hover:bg-blue-500 group-hover:text-white' : 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'}`}><MessageSquare className="w-6 h-6" /></div>
+            <span className={`text-[10px] sm:text-xs font-bold text-center ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Lapor RT</span>
           </button>
-          <button onClick={() => setActiveTab('kas')} className={`flex flex-col items-center justify-center p-4 md:p-5 rounded-3xl border hover:shadow-md transition-all active:scale-95 group ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]'}`}>
-            <div className="w-12 h-12 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-3 group-hover:bg-emerald-500 group-hover:text-white transition-colors"><Wallet className="w-6 h-6" /></div>
-            <span className={`text-[10px] md:text-xs font-bold text-center ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Cek Kas</span>
+          <button onClick={() => setActiveTab('kas')} className={`flex flex-col items-center justify-center p-4 sm:p-5 rounded-3xl border hover:shadow-lg transition-all active:scale-95 group ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-colors ${darkMode ? 'bg-emerald-500/20 text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white' : 'bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white'}`}><Wallet className="w-6 h-6" /></div>
+            <span className={`text-[10px] sm:text-xs font-bold text-center ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Uang Kas</span>
           </button>
-          <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center justify-center p-4 md:p-5 rounded-3xl border hover:shadow-md transition-all active:scale-95 group ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]'}`}>
-            <div className="w-12 h-12 bg-yellow-500/10 text-yellow-500 rounded-full flex items-center justify-center mb-3 group-hover:bg-yellow-400 group-hover:text-white transition-colors"><Star className="w-6 h-6" /></div>
-            <span className={`text-[10px] md:text-xs font-bold text-center ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Nilai RT</span>
+          <button onClick={() => setActiveTab('penilaian')} className={`flex flex-col items-center justify-center p-4 sm:p-5 rounded-3xl border hover:shadow-lg transition-all active:scale-95 group ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-colors ${darkMode ? 'bg-amber-500/20 text-amber-400 group-hover:bg-amber-500 group-hover:text-white' : 'bg-amber-50 text-amber-500 group-hover:bg-amber-500 group-hover:text-white'}`}><Star className="w-6 h-6" /></div>
+            <span className={`text-[10px] sm:text-xs font-bold text-center ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Nilai RT</span>
           </button>
-          <button onClick={handlePanicButton} className={`flex flex-col items-center justify-center p-4 md:p-5 rounded-3xl border hover:shadow-md transition-all active:scale-95 group ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]'}`}>
-            <div className="w-12 h-12 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center mb-3 group-hover:bg-rose-500 group-hover:text-white transition-colors"><ShieldAlert className="w-6 h-6" /></div>
-            <span className={`text-[10px] md:text-xs font-bold text-center ${darkMode ? 'text-rose-400' : 'text-rose-600'}`}>Darurat!</span>
+          <button onClick={handlePanicButton} className={`flex flex-col items-center justify-center p-4 sm:p-5 rounded-3xl border hover:shadow-lg transition-all active:scale-95 group ${darkMode ? 'bg-rose-900/30 border-rose-800/50' : 'bg-rose-50 border-rose-100 shadow-sm'}`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-3 transition-colors ${darkMode ? 'bg-rose-500/20 text-rose-400 group-hover:bg-rose-500 group-hover:text-white' : 'bg-rose-100 text-rose-600 group-hover:bg-rose-600 group-hover:text-white'}`}><ShieldAlert className="w-6 h-6" /></div>
+            <span className={`text-[10px] sm:text-xs font-bold text-center ${darkMode ? 'text-rose-400' : 'text-rose-600'}`}>Darurat!</span>
           </button>
         </div>
 
+        {/* PESAN KHUSUS / BANSOS (TICKET STYLE) */}
         {privateInfos.length > 0 && (
           <div className="animate-in slide-in-from-left-4">
-            <div className="mb-4 flex items-center"><Gift className="w-6 h-6 mr-2 text-rose-500 animate-bounce" /><h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Pesan Khusus Anda</h2></div>
+            <div className="mb-4 flex items-center"><Gift className="w-6 h-6 mr-2 text-rose-500 animate-bounce" /><h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Pemberitahuan Khusus</h2></div>
             <div className="space-y-4">
               {privateInfos.map(info => (
-                <div key={info.id} className="bg-gradient-to-r from-rose-500/10 to-orange-500/10 p-6 rounded-3xl border border-rose-500/20 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
-                  <div className="absolute top-0 right-0 bg-rose-500 text-white text-[10px] font-bold px-4 py-1.5 rounded-bl-2xl">RAHASIA</div>
-                  <h3 className={`font-bold text-lg mt-2 ${darkMode ? 'text-rose-400' : 'text-rose-800'}`}>{info.title}</h3>
-                  <p className={`text-sm mt-2 leading-relaxed font-medium ${darkMode ? 'text-rose-200' : 'text-rose-700/80'}`}>{info.content}</p>
+                <div key={info.id} className={`p-6 sm:p-8 rounded-[2rem] border relative overflow-hidden group shadow-lg ${darkMode ? 'bg-gradient-to-r from-rose-900/40 to-orange-900/20 border-rose-800/50' : 'bg-gradient-to-r from-rose-50 to-orange-50 border-rose-200'}`}>
+                  <div className="absolute top-0 right-0 bg-gradient-to-l from-rose-500 to-orange-500 text-white text-[10px] font-extrabold px-6 py-2 rounded-bl-3xl uppercase tracking-widest shadow-md">RAHASIA / BANSOS</div>
+                  <div className="absolute -left-6 top-1/2 w-12 h-12 rounded-full bg-[#F8FAFC] dark:bg-slate-950 transform -translate-y-1/2 shadow-inner"></div>
+                  <div className="absolute -right-6 top-1/2 w-12 h-12 rounded-full bg-[#F8FAFC] dark:bg-slate-950 transform -translate-y-1/2 shadow-inner"></div>
+                  
+                  <div className="pl-6 border-l-2 border-dashed border-rose-300 dark:border-rose-700 ml-4">
+                    <h3 className={`font-extrabold text-xl mt-2 ${darkMode ? 'text-rose-400' : 'text-rose-800'}`}>{info.title}</h3>
+                    <p className={`text-sm mt-3 leading-relaxed font-medium ${darkMode ? 'text-rose-200' : 'text-rose-700/80'}`}>{info.content}</p>
+                    <div className="mt-4 inline-block px-3 py-1 bg-rose-500/20 text-rose-600 dark:text-rose-300 text-xs font-bold rounded-lg border border-rose-500/30">{info.date}</div>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
         )}
 
+        {/* PENGUMUMAN RT */}
         <div>
-          <div className="mb-4 flex justify-between items-end"><h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Pengumuman RT</h2></div>
+          <div className="mb-4 flex items-center"><Megaphone className="w-5 h-5 mr-2 text-blue-500"/><h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Pengumuman Warga</h2></div>
           <div className="grid gap-4">
-            {publicInfos.length === 0 ? <p className="text-slate-400 text-sm text-center py-4">Belum ada pengumuman.</p> : publicInfos.map(info => (
-              <div key={info.id} className={`p-6 rounded-3xl border transition-all group ${darkMode ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_4px_25px_rgb(0,0,0,0.06)]'}`}>
-                <div className="flex justify-between items-start mb-3">
-                  <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${info.type === 'Posyandu' ? (darkMode ? 'bg-pink-500/20 text-pink-300' : 'bg-pink-100 text-pink-700') : (darkMode ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-700')}`}>{info.type}</span>
-                  <span className={`text-xs font-medium px-2 py-1 rounded-lg ${darkMode ? 'bg-slate-700 text-slate-400' : 'bg-slate-50 text-slate-400'}`}>{info.date}</span>
+            {publicInfos.length === 0 ? <p className="text-slate-400 text-sm text-center py-8">Belum ada pengumuman.</p> : publicInfos.map(info => (
+              <div key={info.id} className={`p-6 sm:p-7 rounded-[1.5rem] border transition-all group ${darkMode ? 'bg-slate-800 border-slate-700 hover:border-slate-600' : 'bg-white border-slate-100 shadow-sm hover:shadow-md'}`}>
+                <div className="flex justify-between items-start mb-4 border-b pb-4 border-slate-100 dark:border-slate-700/50">
+                  <span className={`text-[10px] font-extrabold px-3 py-1 rounded-md uppercase tracking-widest ${info.type === 'Posyandu' ? (darkMode ? 'bg-pink-500/20 text-pink-400' : 'bg-pink-100 text-pink-700') : (darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-700')}`}>{info.type}</span>
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-500'}`}><Clock className="w-3 h-3 inline mr-1 -mt-0.5" />{info.date}</span>
                 </div>
                 <h3 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-slate-800'}`}>{info.title}</h3>
-                <p className={`text-sm mt-2 leading-relaxed ${darkMode ? 'text-slate-300' : 'text-slate-500'}`}>{info.content}</p>
+                <p className={`text-sm mt-2.5 leading-relaxed font-medium ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>{info.content}</p>
               </div>
             ))}
           </div>
         </div>
 
+        {/* JADWAL WARGA */}
         <div>
-          <div className="mb-4 flex items-center"><CalendarDays className="w-5 h-5 mr-2 text-indigo-500"/><h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Jadwal Warga</h2></div>
+          <div className="mb-4 flex items-center"><CalendarClock className="w-5 h-5 mr-2 text-indigo-500"/><h2 className={`text-xl font-bold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Jadwal Warga</h2></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {jadwals.length === 0 ? <p className="text-slate-400 text-sm text-center py-4 col-span-2">Belum ada jadwal aktif.</p> : jadwals.map(jadwal => (
-              <div key={jadwal.id} className={`p-5 rounded-3xl border transition-all ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]'}`}>
-                <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase ${darkMode ? 'bg-indigo-500/20 text-indigo-300' : 'bg-indigo-50 text-indigo-600'}`}>{jadwal.type}</span>
-                <h3 className={`font-bold text-lg mt-3 ${darkMode ? 'text-white' : 'text-slate-800'}`}>{jadwal.hari}</h3>
-                <div className={`mt-3 p-3 rounded-2xl border ${darkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-100'}`}><p className={`text-sm font-medium leading-relaxed ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>{jadwal.details}</p></div>
+            {jadwals.length === 0 ? <p className="text-slate-400 text-sm text-center py-8 col-span-2">Belum ada jadwal aktif.</p> : jadwals.map(jadwal => (
+              <div key={jadwal.id} className={`p-6 rounded-[1.5rem] border transition-all ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-sm'}`}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className={`p-2 rounded-xl ${darkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-50 text-indigo-600'}`}><CalendarDays className="w-5 h-5" /></div>
+                  <span className={`text-[10px] font-extrabold px-3 py-1 rounded-md uppercase ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>{jadwal.type}</span>
+                </div>
+                <h3 className={`font-bold text-lg ${darkMode ? 'text-white' : 'text-slate-800'}`}>{jadwal.hari}</h3>
+                <div className={`mt-4 p-4 rounded-xl border ${darkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-100'}`}><p className={`text-sm font-medium leading-relaxed ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>{jadwal.details}</p></div>
               </div>
             ))}
           </div>
@@ -368,14 +395,20 @@ const App = () => {
       const file = e.target.files[0];
       if (file) { compressImage(file, (compressed) => { setLaporPhoto(compressed); showToast('Foto berhasil disiapkan!'); }); }
     };
+    
     const handleEnhanceText = async () => {
       if (!laporDesc.trim()) return showToast('Tuliskan keluhan singkat terlebih dahulu!');
       setIsEnhancing(true);
-      try {
-        const result = await callGeminiAPI(`Perbaiki teks ini agar formal dan sopan tanpa menambah salam berlebihan: "${laporDesc}"`);
-        if (result) { setLaporDesc(result.trim()); showToast('✨ Keluhan berhasil disempurnakan!'); }
-      } catch (e) { showToast('Gagal menyempurnakan teks.'); } finally { setIsEnhancing(false); }
+      const result = await callGeminiAPI(`Perbaiki teks ini agar formal dan sopan tanpa menambah salam berlebihan: "${laporDesc}"`);
+      if (result.success) { 
+        setLaporDesc(result.text.trim()); 
+        showToast('✨ Keluhan berhasil disempurnakan!'); 
+      } else { 
+        showToast(`AI Error: ${result.error}`); 
+      }
+      setIsEnhancing(false);
     };
+
     const submitKeluhan = async (e) => {
       e.preventDefault();
       if (!laporDesc) return showToast('Deskripsi tidak boleh kosong!');
@@ -387,7 +420,7 @@ const App = () => {
     return (
       <div className="animate-in fade-in slide-in-from-right-4 duration-500 max-w-2xl mx-auto">
         <div className="mb-8 text-center">
-          <div className="w-16 h-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4"><MessageSquare className="w-8 h-8" /></div>
+          <div className="w-16 h-16 bg-blue-500/10 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4"><MessageSquare className="w-8 h-8" /></div>
           <h2 className={`text-2xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Lapor ke RT</h2>
           <p className="text-sm text-slate-500 mt-2">Sampaikan masukan atau masalah di lingkungan dengan mudah dan cepat.</p>
         </div>
@@ -400,7 +433,7 @@ const App = () => {
                   {isEnhancing ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Sparkles className="w-4 h-4 mr-1.5" />} Rapikan Bahasa (AI)
                 </button>
               </div>
-              <textarea value={laporDesc} onChange={(e) => setLaporDesc(e.target.value)} rows="5" placeholder="Contoh: Lampu jalan di Blok A mati sejak kemarin..." className={`w-full p-5 rounded-2xl outline-none text-sm resize-none focus:ring-2 focus:ring-emerald-500/50 transition-all ${darkMode ? 'bg-slate-900 border border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border border-slate-200 focus:bg-white'}`} />
+              <textarea value={laporDesc} onChange={(e) => setLaporDesc(e.target.value)} rows="5" placeholder="Contoh: Lampu jalan di Blok A mati sejak kemarin..." className={`w-full p-5 rounded-2xl outline-none text-sm resize-none focus:ring-2 focus:ring-blue-500/50 transition-all ${darkMode ? 'bg-slate-900 border border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border border-slate-200 focus:bg-white'}`} />
             </div>
             <div>
               <label className={`block text-sm font-bold mb-3 ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>Lampirkan Bukti Foto</label>
@@ -419,7 +452,7 @@ const App = () => {
                 </div>
               )}
             </div>
-            <button type="submit" disabled={isLoadingDB} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center">{isLoadingDB ? <Loader2 className="w-6 h-6 animate-spin"/> : 'Kirim Laporan'}</button>
+            <button type="submit" disabled={isLoadingDB} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center">{isLoadingDB ? <Loader2 className="w-6 h-6 animate-spin"/> : 'Kirim Laporan'}</button>
           </div>
         </form>
       </div>
@@ -429,12 +462,16 @@ const App = () => {
   const renderUangKasView = () => {
     const handleAnalyzeKas = async () => {
       setIsAnalyzingKas(true);
-      try {
-        const financeData = finances.map(f => `${f.type}: Rp${f.amount}`).join(', ');
-        const result = await callGeminiAPI(`Berikan 2 kalimat ringkasan tentang kesehatan kas. Total Saldo: Rp${totalKas}. Transaksi: ${financeData}`);
-        if (result) setKasSummary(result.trim());
-      } catch (error) { showToast('Gagal menganalisis kas.'); } finally { setIsAnalyzingKas(false); }
+      const financeData = finances.map(f => `${f.type}: Rp${f.amount}`).join(', ');
+      const result = await callGeminiAPI(`Berikan 2 kalimat ringkasan tentang kesehatan kas. Total Saldo: Rp${totalKas}. Transaksi: ${financeData}`);
+      if (result.success) { 
+        setKasSummary(result.text.trim()); 
+      } else { 
+        showToast(`AI Error: ${result.error}`); 
+      }
+      setIsAnalyzingKas(false);
     };
+
     const submitSetorKas = async (e) => {
       e.preventDefault();
       const inputNama = kasData.nama || currentUser?.name || '';
@@ -500,7 +537,7 @@ const App = () => {
     return (
       <div className="animate-in fade-in max-w-xl mx-auto">
         <div className="mb-8 text-center">
-          <div className="w-16 h-16 bg-yellow-500/10 text-yellow-500 rounded-full flex items-center justify-center mx-auto mb-4"><Star className="w-8 h-8 fill-yellow-500" /></div>
+          <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-4"><Star className="w-8 h-8 fill-amber-500" /></div>
           <h2 className={`text-2xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>Penilaian Kinerja RT</h2>
           <p className="text-sm text-slate-500 mt-2">Bantu kami menjadi lebih baik dengan ulasan Anda.</p>
         </div>
@@ -509,15 +546,15 @@ const App = () => {
           <div className="flex justify-center gap-3 mb-8">
             {[1, 2, 3, 4, 5].map((num) => (
               <button key={num} type="button" onClick={() => setStar(num)} className="focus:outline-none hover:scale-110 transition-transform">
-                <Star className={`w-12 h-12 transition-all duration-300 ${num <= star ? 'fill-yellow-400 text-yellow-400 drop-shadow-md' : 'text-slate-200/20'}`} />
+                <Star className={`w-12 h-12 transition-all duration-300 ${num <= star ? 'fill-amber-400 text-amber-400 drop-shadow-md' : 'text-slate-200/20'}`} />
               </button>
             ))}
           </div>
           <div className="text-left">
             <label className={`block text-sm font-bold mb-3 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>Tulis Ulasan (Opsional)</label>
-            <textarea value={ratingComment} onChange={(e) => setRatingComment(e.target.value)} placeholder="Saran atau kritik..." rows="4" className={`w-full p-5 rounded-2xl outline-none text-sm resize-none mb-6 focus:ring-2 focus:ring-yellow-400/50 transition-all ${darkMode ? 'bg-slate-900 border border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border border-slate-200 focus:bg-white'}`} />
+            <textarea value={ratingComment} onChange={(e) => setRatingComment(e.target.value)} placeholder="Saran atau kritik..." rows="4" className={`w-full p-5 rounded-2xl outline-none text-sm resize-none mb-6 focus:ring-2 focus:ring-amber-400/50 transition-all ${darkMode ? 'bg-slate-900 border border-slate-700 text-white placeholder-slate-500' : 'bg-slate-50 border border-slate-200 focus:bg-white'}`} />
           </div>
-          <button type="submit" disabled={isLoadingDB} className="w-full bg-slate-800 hover:bg-slate-900 dark:bg-emerald-600 dark:hover:bg-emerald-700 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all">{isLoadingDB ? 'Menyimpan...' : 'Kirim Penilaian'}</button>
+          <button type="submit" disabled={isLoadingDB} className="w-full bg-slate-800 hover:bg-slate-900 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all">{isLoadingDB ? 'Menyimpan...' : 'Kirim Penilaian'}</button>
         </form>
       </div>
     );
@@ -526,11 +563,15 @@ const App = () => {
   const renderRtKeluhanView = () => {
     const handleGenerateReply = async (desc) => {
       setIsGeneratingReply(true);
-      try {
-        const result = await callGeminiAPI(`Buatkan balasan penyelesaian singkat, ramah, dan solutif untuk keluhan warga ini: "${desc}"`);
-        if (result) setAiReplyText(result.trim());
-      } catch (error) { showToast('Gagal memuat balasan AI.'); } finally { setIsGeneratingReply(false); }
+      const result = await callGeminiAPI(`Buatkan balasan penyelesaian singkat, ramah, dan solutif untuk keluhan warga ini: "${desc}"`);
+      if (result.success) { 
+        setAiReplyText(result.text.trim()); 
+      } else { 
+        showToast(`AI Error: ${result.error}`); 
+      }
+      setIsGeneratingReply(false);
     };
+
     const handleSelesai = async (id) => {
       setIsLoadingDB(true);
       await updateInDB('keluhan', id, { status: 'Selesai', rtReply: aiReplyText });
@@ -552,7 +593,7 @@ const App = () => {
                   <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-inner ${darkMode ? 'bg-slate-900 text-slate-500' : 'bg-slate-100 text-slate-400'}`}><User className="w-6 h-6" /></div>
                   <div><h4 className={`font-bold text-sm md:text-base ${darkMode ? 'text-white' : 'text-slate-800'}`}>{comp.sender}</h4><p className="text-xs text-slate-500 font-medium mt-0.5">{comp.date}</p></div>
                 </div>
-                <span className={`text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider ${comp.status === 'Selesai' ? (darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700') : (darkMode ? 'bg-yellow-500/20 text-yellow-400' : 'bg-yellow-100 text-yellow-700')}`}>{comp.status}</span>
+                <span className={`text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider ${comp.status === 'Selesai' ? (darkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-700') : (darkMode ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700')}`}>{comp.status}</span>
               </div>
               <div className={`p-5 rounded-2xl border mb-4 ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-300' : 'bg-slate-50 border-slate-100/50 text-slate-700'}`}><p className="text-sm md:text-base leading-relaxed">{comp.description}</p></div>
               {comp.photo && <div className="mb-5 rounded-2xl overflow-hidden border border-slate-600 shadow-sm"><img src={comp.photo} alt="Bukti" className="w-full max-h-72 object-cover" /></div>}
@@ -563,16 +604,16 @@ const App = () => {
                 <div className={`mt-5 pt-5 border-t ${darkMode ? 'border-slate-700' : 'border-slate-100'}`}>
                   {replyingTo === comp.id ? (
                     <div className="animate-in slide-in-from-top-2 space-y-4">
-                      <textarea value={aiReplyText} onChange={(e) => setAiReplyText(e.target.value)} placeholder="Tuliskan tindak lanjut..." rows="3" className={`w-full p-4 rounded-2xl outline-none text-sm focus:ring-2 focus:ring-indigo-500/50 transition-all resize-none shadow-sm ${darkMode ? 'bg-slate-900 border border-slate-700 text-white' : 'bg-white border border-slate-200'}`} />
+                      <textarea value={aiReplyText} onChange={(e) => setAiReplyText(e.target.value)} placeholder="Tuliskan tindak lanjut..." rows="3" className={`w-full p-4 rounded-2xl outline-none text-sm focus:ring-2 focus:ring-blue-500/50 transition-all resize-none shadow-sm ${darkMode ? 'bg-slate-900 border border-slate-700 text-white' : 'bg-white border border-slate-200'}`} />
                       <div className="flex flex-col sm:flex-row gap-3">
-                        <button onClick={() => handleGenerateReply(comp.description)} disabled={isGeneratingReply} className={`flex-1 text-sm font-bold py-3.5 rounded-xl flex items-center justify-center transition-all ${darkMode ? 'bg-indigo-900/50 text-indigo-300 hover:bg-indigo-800/50' : 'bg-indigo-50 hover:bg-indigo-100 text-indigo-600'}`}>
+                        <button onClick={() => handleGenerateReply(comp.description)} disabled={isGeneratingReply} className={`flex-1 text-sm font-bold py-3.5 rounded-xl flex items-center justify-center transition-all ${darkMode ? 'bg-blue-900/50 text-blue-300 hover:bg-blue-800/50' : 'bg-blue-50 hover:bg-blue-100 text-blue-600'}`}>
                           {isGeneratingReply ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />} Susun Balasan AI
                         </button>
                         <button onClick={() => handleSelesai(comp.id)} disabled={isLoadingDB} className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold py-3.5 rounded-xl flex items-center justify-center shadow-md active:scale-95 transition-all">{isLoadingDB ? 'Menyimpan...' : 'Kirim & Tutup Laporan'}</button>
                       </div>
                     </div>
                   ) : (
-                    <button onClick={() => setReplyingTo(comp.id)} className={`w-full text-sm font-bold py-3.5 rounded-2xl flex items-center justify-center transition-all ${darkMode ? 'bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}><ChevronRight className="w-5 h-5 mr-1"/> Tanggapi Laporan Ini</button>
+                    <button onClick={() => setReplyingTo(comp.id)} className={`w-full text-sm font-bold py-3.5 rounded-2xl flex items-center justify-center transition-all ${darkMode ? 'bg-blue-500/10 text-blue-400 hover:bg-blue-500/20' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}><ChevronRight className="w-5 h-5 mr-1"/> Tanggapi Laporan Ini</button>
                   )}
                 </div>
               )}
@@ -594,11 +635,15 @@ const App = () => {
 
     const handleAnalyzeDemographics = async () => {
       setIsAnalyzingDemo(true);
-      try {
-        const result = await callGeminiAPI(`Lingkungan RT terdiri dari: ${pctAnak}% Anak-anak, ${pctRemaja}% Remaja, dan ${pctOrangTua}% Orang Tua dari total ${totalWarga} warga. Berikan ringkasan profil warga dan sarankan 2 ide program kegiatan RT yang paling cocok.`);
-        if (result) setDemoAnalysis(result.trim());
-      } catch (e) { showToast('Gagal menganalisis demografi.'); } finally { setIsAnalyzingDemo(false); }
+      const result = await callGeminiAPI(`Lingkungan RT terdiri dari: ${pctAnak}% Anak-anak, ${pctRemaja}% Remaja, dan ${pctOrangTua}% Orang Tua dari total ${totalWarga} warga. Berikan ringkasan profil warga dan sarankan 2 ide program kegiatan RT yang paling cocok.`);
+      if (result.success) { 
+        setDemoAnalysis(result.text.trim()); 
+      } else { 
+        showToast(`AI Error: ${result.error}`); 
+      }
+      setIsAnalyzingDemo(false);
     };
+
     const keluargaGroup = wargaList.reduce((acc, warga) => {
       const key = warga.nik || 'Tanpa NIK';
       if (!acc[key]) acc[key] = []; acc[key].push(warga); return acc;
@@ -610,20 +655,20 @@ const App = () => {
         <div className={`p-8 rounded-[2rem] border mb-8 relative overflow-hidden ${darkMode ? 'bg-slate-800 border-slate-700 shadow-none' : 'bg-white border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`}>
           <div className={`flex flex-col md:flex-row md:justify-between md:items-center border-b pb-5 mb-6 gap-4 ${darkMode ? 'border-slate-700' : 'border-slate-100'}`}>
             <div><h3 className={`font-extrabold text-lg ${darkMode ? 'text-white' : 'text-slate-800'}`}>Statistik Usia</h3><p className="text-xs text-slate-500 font-medium mt-1">Berdasarkan {wargaList.length} warga terdaftar</p></div>
-            <button onClick={handleAnalyzeDemographics} disabled={isAnalyzingDemo} className={`text-xs font-bold px-5 py-2.5 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95 ${darkMode ? 'bg-indigo-600 text-white hover:bg-indigo-700' : 'bg-slate-800 text-white hover:bg-slate-700'}`}>
+            <button onClick={handleAnalyzeDemographics} disabled={isAnalyzingDemo} className={`text-xs font-bold px-5 py-2.5 rounded-xl flex items-center justify-center transition-all shadow-md active:scale-95 ${darkMode ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-slate-800 text-white hover:bg-slate-700'}`}>
               {isAnalyzingDemo ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <TrendingUp className="w-4 h-4 mr-2" />} Konsultasi Program (AI)
             </button>
           </div>
           {demoAnalysis && (
-            <div className={`p-5 rounded-2xl mb-8 text-sm whitespace-pre-wrap leading-relaxed border ${darkMode ? 'bg-indigo-900/30 border-indigo-800 text-indigo-200' : 'bg-indigo-50/70 border-indigo-100 text-indigo-900'}`}>
-              <p className={`font-bold mb-3 flex items-center ${darkMode ? 'text-indigo-400' : 'text-indigo-700'}`}><Sparkles className="w-5 h-5 mr-2"/> Analisis AI & Rekomendasi:</p>
+            <div className={`p-5 rounded-2xl mb-8 text-sm whitespace-pre-wrap leading-relaxed border ${darkMode ? 'bg-blue-900/30 border-blue-800 text-blue-200' : 'bg-blue-50/70 border-blue-100 text-blue-900'}`}>
+              <p className={`font-bold mb-3 flex items-center ${darkMode ? 'text-blue-400' : 'text-blue-700'}`}><Sparkles className="w-5 h-5 mr-2"/> Analisis AI & Rekomendasi:</p>
               {demoAnalysis}
             </div>
           )}
           <div className="space-y-5">
              <div><div className={`flex justify-between mb-2 text-sm font-bold ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}><span>Orang Tua (&gt;26 Thn)</span><span className="text-emerald-500">{pctOrangTua}%</span></div><div className={`w-full rounded-full h-3 overflow-hidden ${darkMode ? 'bg-slate-700' : 'bg-slate-100'}`}><div className="bg-emerald-400 h-3 rounded-full shadow-[0_0_10px_rgba(52,211,153,0.5)]" style={{ width: `${pctOrangTua}%` }}></div></div></div>
              <div><div className={`flex justify-between mb-2 text-sm font-bold ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}><span>Remaja (14-26 Thn)</span><span className="text-blue-500">{pctRemaja}%</span></div><div className={`w-full rounded-full h-3 overflow-hidden ${darkMode ? 'bg-slate-700' : 'bg-slate-100'}`}><div className="bg-blue-400 h-3 rounded-full shadow-[0_0_10px_rgba(96,165,250,0.5)]" style={{ width: `${pctRemaja}%` }}></div></div></div>
-             <div><div className={`flex justify-between mb-2 text-sm font-bold ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}><span>Anak-anak (8-13 Thn)</span><span className="text-orange-400">{pctAnak}%</span></div><div className={`w-full rounded-full h-3 overflow-hidden ${darkMode ? 'bg-slate-700' : 'bg-slate-100'}`}><div className="bg-orange-400 h-3 rounded-full shadow-[0_0_10px_rgba(251,146,60,0.5)]" style={{ width: `${pctAnak}%` }}></div></div></div>
+             <div><div className={`flex justify-between mb-2 text-sm font-bold ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}><span>Anak-anak (8-13 Thn)</span><span className="text-amber-400">{pctAnak}%</span></div><div className={`w-full rounded-full h-3 overflow-hidden ${darkMode ? 'bg-slate-700' : 'bg-slate-100'}`}><div className="bg-amber-400 h-3 rounded-full shadow-[0_0_10px_rgba(251,146,60,0.5)]" style={{ width: `${pctAnak}%` }}></div></div></div>
           </div>
         </div>
         <h3 className={`font-extrabold text-xl mb-5 ${darkMode ? 'text-white' : 'text-slate-800'}`}>Kartu Keluarga</h3>
@@ -631,7 +676,7 @@ const App = () => {
           {Object.keys(keluargaGroup).map((nik, i) => (
             <div key={i} className={`p-6 rounded-3xl border transition-shadow ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-md'}`}>
               <div className={`flex items-center mb-5 pb-4 border-b ${darkMode ? 'border-slate-700' : 'border-slate-50'}`}>
-                <div className={`p-3 rounded-2xl mr-4 ${darkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-50 text-indigo-500'}`}><Users className="w-6 h-6" /></div>
+                <div className={`p-3 rounded-2xl mr-4 ${darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-500'}`}><Users className="w-6 h-6" /></div>
                 <div><h4 className={`font-bold text-sm ${darkMode ? 'text-white' : 'text-slate-800'}`}>Keluarga</h4><p className="text-xs text-slate-400 font-mono mt-0.5">KK: {nik}</p></div>
               </div>
               <div className="space-y-3">
@@ -655,18 +700,21 @@ const App = () => {
   const renderRtBuatJadwalDanInfo = () => {
     const generateIdeKegiatan = async () => {
       setIsIdeating(true);
-      try {
-        const result = await callGeminiAPI(`Berikan 3 ide kegiatan warga tingkat RT yang kreatif, seru, dan hemat biaya. Tulis poin-poinnya saja.`);
-        if (result) { setJType('Custom'); setJCustomType('Kegiatan (Ide AI)'); setJDetails(result.trim()); showToast('✨ Ide dibuat!'); setInfoMode('jadwal'); }
-      } catch (e) { showToast('Gagal.'); } finally { setIsIdeating(false); }
+      const result = await callGeminiAPI(`Berikan 3 ide kegiatan warga tingkat RT yang kreatif, seru, dan hemat biaya. Tulis poin-poinnya saja.`);
+      if (result.success) { 
+        setJType('Custom'); setJCustomType('Kegiatan (Ide AI)'); setJDetails(result.text.trim()); showToast('✨ Ide dibuat!'); setInfoMode('jadwal'); 
+      } else { showToast(`AI Error: ${result.error}`); }
+      setIsIdeating(false);
     };
+
     const generateAnnouncement = async () => {
       if (!infoTitle) return showToast('Isi Judul dulu!');
       setIsGeneratingInfo(true);
-      try {
-        const result = await callGeminiAPI(`Buatkan draf pengumuman RT resmi. Topik: ${infoTitle}. Catatan: ${infoContent}`);
-        if (result) { setInfoContent(result.trim()); showToast('✨ Draf dibuat!'); }
-      } catch (e) { showToast('Gagal.'); } finally { setIsGeneratingInfo(false); }
+      const result = await callGeminiAPI(`Buatkan draf pengumuman RT resmi. Topik: ${infoTitle}. Catatan: ${infoContent}`);
+      if (result.success) { 
+        setInfoContent(result.text.trim()); showToast('✨ Draf dibuat!'); 
+      } else { showToast(`AI Error: ${result.error}`); }
+      setIsGeneratingInfo(false);
     };
 
     const submitInfo = async (e) => {
@@ -718,21 +766,21 @@ const App = () => {
           </form>
         ) : (
           <form onSubmit={submitJadwal} className={`p-8 rounded-[2rem] border space-y-6 animate-in slide-in-from-bottom-4 duration-300 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`}>
-            <select value={jType} onChange={(e) => setJType(e.target.value)} className={`w-full p-4 rounded-2xl outline-none text-sm font-medium focus:ring-2 focus:ring-indigo-500/50 transition-all ${darkMode ? 'bg-slate-900 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`}>
+            <select value={jType} onChange={(e) => setJType(e.target.value)} className={`w-full p-4 rounded-2xl outline-none text-sm font-medium focus:ring-2 focus:ring-blue-500/50 transition-all ${darkMode ? 'bg-slate-900 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`}>
               <option value="Ronda Malam">Ronda Malam</option><option value="Kerja Bakti">Kerja Bakti</option><option value="Custom">Jadwal Kustom</option>
             </select>
-            {jType === 'Custom' && <input type="text" value={jCustomType} onChange={(e) => setJCustomType(e.target.value)} placeholder="Jenis Custom (Contoh: Senam Sehat)" className={`w-full p-4 rounded-2xl outline-none text-sm ${darkMode ? 'bg-indigo-900/30 border border-indigo-800 text-white' : 'bg-indigo-50 border border-indigo-200'}`} />}
-            <input type="text" value={jHari} onChange={(e) => setJHari(e.target.value)} placeholder="Hari & Waktu" className={`w-full p-4 rounded-2xl outline-none text-sm focus:ring-2 focus:ring-indigo-500/50 transition-all ${darkMode ? 'bg-slate-900 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
+            {jType === 'Custom' && <input type="text" value={jCustomType} onChange={(e) => setJCustomType(e.target.value)} placeholder="Jenis Custom (Contoh: Senam Sehat)" className={`w-full p-4 rounded-2xl outline-none text-sm ${darkMode ? 'bg-blue-900/30 border border-blue-800 text-white' : 'bg-blue-50 border border-blue-200'}`} />}
+            <input type="text" value={jHari} onChange={(e) => setJHari(e.target.value)} placeholder="Hari & Waktu" className={`w-full p-4 rounded-2xl outline-none text-sm focus:ring-2 focus:ring-blue-500/50 transition-all ${darkMode ? 'bg-slate-900 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
             <div>
               <div className="flex justify-between items-center mb-3">
                 <label className={`block text-sm font-bold ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>Detail / Petugas</label>
-                <button type="button" onClick={generateIdeKegiatan} disabled={isIdeating} className={`text-xs font-bold px-4 py-2 rounded-full flex items-center transition-all active:scale-95 ${darkMode ? 'bg-indigo-500/20 text-indigo-300 hover:bg-indigo-500/30' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}>
+                <button type="button" onClick={generateIdeKegiatan} disabled={isIdeating} className={`text-xs font-bold px-4 py-2 rounded-full flex items-center transition-all active:scale-95 ${darkMode ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30' : 'bg-blue-50 text-blue-600 hover:bg-blue-100'}`}>
                   {isIdeating ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Lightbulb className="w-4 h-4 mr-1.5" />} Ide Kegiatan AI
                 </button>
               </div>
-              <textarea value={jDetails} onChange={(e) => setJDetails(e.target.value)} placeholder="Sebutkan nama petugas atau deskripsi..." rows="5" className={`w-full p-4 rounded-2xl outline-none text-sm resize-none focus:ring-2 focus:ring-indigo-500/50 transition-all ${darkMode ? 'bg-slate-900 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
+              <textarea value={jDetails} onChange={(e) => setJDetails(e.target.value)} placeholder="Sebutkan nama petugas atau deskripsi..." rows="5" className={`w-full p-4 rounded-2xl outline-none text-sm resize-none focus:ring-2 focus:ring-blue-500/50 transition-all ${darkMode ? 'bg-slate-900 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
             </div>
-            <button type="submit" disabled={isLoadingDB} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all">{isLoadingDB ? 'Menyimpan...' : 'Simpan Jadwal ke Database'}</button>
+            <button type="submit" disabled={isLoadingDB} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl shadow-lg active:scale-95 transition-all">{isLoadingDB ? 'Menyimpan...' : 'Simpan Jadwal ke Database'}</button>
           </form>
         )}
       </div>
@@ -741,33 +789,37 @@ const App = () => {
 
   const renderRtPenilaianView = () => {
     const avgRating = ratings.length > 0 ? (ratings.reduce((acc, curr) => acc + parseInt(curr.stars||0), 0) / ratings.length).toFixed(1) : 0;
+    const [aiSummary, setAiSummary] = useState('');
+    const [isSummarizing, setIsSummarizing] = useState(false);
+
     const handleSummarize = async () => {
       if (ratings.length === 0) return showToast('Belum ada ulasan warga.');
-      setIsSummarizingRating(true);
-      try {
-        const reviews = ratings.map(r => `Bintang ${r.stars}: ${r.comment}`).join('\n');
-        const result = await callGeminiAPI(`Analisis ulasan warga terhadap kinerja RT ini. Berikan 1 paragraf kelebihan dan 1 paragraf saran perbaikan. Ulasan:\n${reviews}`);
-        if (result) setAiRatingSummary(result.trim());
-      } catch (e) { showToast('Gagal membuat ringkasan.'); } finally { setIsSummarizingRating(false); }
+      setIsSummarizing(true);
+      const reviews = ratings.map(r => `Bintang ${r.stars}: ${r.comment}`).join('\n');
+      const result = await callGeminiAPI(`Analisis ulasan warga terhadap kinerja RT ini. Berikan 1 paragraf kelebihan dan 1 paragraf saran perbaikan. Ulasan:\n${reviews}`);
+      if (result.success) { 
+        setAiSummary(result.text.trim()); 
+      } else { showToast(`AI Error: ${result.error}`); }
+      setIsSummarizing(false);
     };
 
     return (
       <div className="animate-in fade-in max-w-3xl mx-auto space-y-6">
         <h2 className={`text-2xl font-extrabold mb-2 ${darkMode ? 'text-white' : 'text-slate-800'}`}>Evaluasi Kinerja</h2>
         <div className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-xl relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/20 rounded-full blur-3xl mix-blend-screen"></div>
+          <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/20 rounded-full blur-3xl mix-blend-screen"></div>
           <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div><p className="text-yellow-400/80 text-sm font-bold tracking-widest uppercase mb-3">Rata-rata Rating</p><div className="flex items-end gap-3"><h3 className="text-5xl font-extrabold text-white">{avgRating}</h3><span className="text-xl font-bold text-slate-500 mb-1.5">/ 5.0</span></div></div>
-            <button onClick={handleSummarize} disabled={isSummarizingRating} className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold py-3 px-5 rounded-2xl flex items-center justify-center transition-all backdrop-blur-md border border-white/10">
-              {isSummarizingRating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-yellow-400" />} Rangkum Ulasan (AI)
+            <div><p className="text-amber-400/80 text-sm font-bold tracking-widest uppercase mb-3">Rata-rata Rating</p><div className="flex items-end gap-3"><h3 className="text-5xl font-extrabold text-white">{avgRating}</h3><span className="text-xl font-bold text-slate-500 mb-1.5">/ 5.0</span></div></div>
+            <button onClick={handleSummarize} disabled={isSummarizing} className="bg-white/10 hover:bg-white/20 text-white text-xs font-bold py-3 px-5 rounded-2xl flex items-center justify-center transition-all backdrop-blur-md border border-white/10">
+              {isSummarizing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2 text-amber-400" />} Rangkum Ulasan (AI)
             </button>
           </div>
-          <Star className="absolute -bottom-6 -right-6 w-32 h-32 text-yellow-300 fill-yellow-300 opacity-30 pointer-events-none" />
+          <Star className="absolute -bottom-6 -right-6 w-32 h-32 text-amber-300 fill-amber-300 opacity-30 pointer-events-none" />
           
-          {aiRatingSummary && (
+          {aiSummary && (
             <div className="relative z-10 mt-6 bg-white/5 p-5 rounded-2xl border border-white/10 text-sm leading-relaxed backdrop-blur-xl">
-              <p className="font-bold text-yellow-400 mb-2 flex items-center"><Sparkles className="w-4 h-4 mr-2"/> Kesimpulan Evaluasi AI:</p>
-              <div className="whitespace-pre-wrap text-slate-200 font-medium">{aiRatingSummary}</div>
+              <p className="font-bold text-amber-400 mb-2 flex items-center"><Sparkles className="w-4 h-4 mr-2"/> Kesimpulan Evaluasi AI:</p>
+              <div className="whitespace-pre-wrap text-slate-200 font-medium">{aiSummary}</div>
             </div>
           )}
         </div>
@@ -776,7 +828,7 @@ const App = () => {
           {ratings.length === 0 ? <p className="text-center text-slate-400 py-10">Belum ada penilaian dari warga.</p> : ratings.map(rating => (
             <div key={rating.id} className={`p-6 rounded-3xl border flex flex-col sm:flex-row gap-4 sm:items-center transition-all ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-100 shadow-[0_4px_20px_rgb(0,0,0,0.03)]'}`}>
               <div className="flex-1"><h4 className={`font-bold mb-1 ${darkMode ? 'text-white' : 'text-slate-800'}`}>{rating.sender}</h4><p className="text-sm text-slate-500 font-medium leading-relaxed italic">"{rating.comment}"</p></div>
-              <div className={`flex items-center px-3 py-2 rounded-xl self-start sm:self-auto border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-50 border-slate-100'}`}><Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-2" /><span className={`font-bold text-sm ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{rating.stars}.0</span></div>
+              <div className={`flex items-center px-3 py-2 rounded-xl self-start sm:self-auto border ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-50 border-slate-100'}`}><Star className="w-4 h-4 fill-amber-400 text-amber-400 mr-2" /><span className={`font-bold text-sm ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>{rating.stars}.0</span></div>
             </div>
           ))}
         </div>
@@ -820,7 +872,7 @@ const App = () => {
 
       {isLoadingDB && (view === 'login' || view === 'register') && (
          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center">
-            <Loader2 className="w-12 h-12 text-emerald-400 animate-spin mb-4" />
+            <Loader2 className="w-12 h-12 text-blue-400 animate-spin mb-4" />
             <p className="font-bold text-white">Menghubungkan ke Server...</p>
          </div>
       )}
@@ -847,14 +899,14 @@ const App = () => {
                       <p className="text-sm text-slate-500 font-medium">Selamat Datang Kembali.</p>
                     </div>
 
-                    <div className={`flex p-1 rounded-xl mb-6 ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                      <button type="button" onClick={() => setLoginRole('warga')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${loginRole === 'warga' ? (darkMode ? 'bg-slate-600 text-white shadow-sm' : 'bg-white text-teal-600 shadow-sm') : 'text-slate-400 hover:text-slate-500'}`}>Warga</button>
-                      <button type="button" onClick={() => setLoginRole('rt')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${loginRole === 'rt' ? (darkMode ? 'bg-slate-600 text-white shadow-sm' : 'bg-white text-teal-600 shadow-sm') : 'text-slate-400 hover:text-slate-500'}`}>Pengurus RT</button>
+                    <div className={`flex p-1 rounded-xl mb-6 ${darkMode ? 'bg-slate-800' : 'bg-slate-100/50'}`}>
+                      <button type="button" onClick={() => setLoginRole('warga')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${loginRole === 'warga' ? (darkMode ? 'bg-slate-600 text-white shadow-sm' : 'bg-white text-blue-600 shadow-sm') : 'text-slate-400 hover:text-slate-500'}`}>Warga</button>
+                      <button type="button" onClick={() => setLoginRole('rt')} className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${loginRole === 'rt' ? (darkMode ? 'bg-slate-600 text-white shadow-sm' : 'bg-white text-blue-600 shadow-sm') : 'text-slate-400 hover:text-slate-500'}`}>Pengurus RT</button>
                     </div>
                     
                     <form onSubmit={handleLogin} className="space-y-5 flex-1">
-                      <input type="text" value={loginEmail} onChange={(e)=>setLoginEmail(e.target.value)} placeholder={loginRole === 'rt' ? "Email Khusus RT" : "Alamat Email Akun Warga"} className={`w-full p-4 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/30 text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
-                      <input type="password" value={loginPassword} onChange={(e)=>setLoginPassword(e.target.value)} placeholder={loginRole === 'rt' ? "Password Khusus RT" : "Password Akun Warga"} className={`w-full p-4 rounded-2xl outline-none focus:ring-2 focus:ring-teal-500/30 text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
+                      <input type="text" value={loginEmail} onChange={(e)=>setLoginEmail(e.target.value)} placeholder={loginRole === 'rt' ? "Email Khusus RT" : "Alamat Email Akun Warga"} className={`w-full p-4 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/30 text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
+                      <input type="password" value={loginPassword} onChange={(e)=>setLoginPassword(e.target.value)} placeholder={loginRole === 'rt' ? "Password Khusus RT" : "Password Akun Warga"} className={`w-full p-4 rounded-2xl outline-none focus:ring-2 focus:ring-blue-500/30 text-sm transition-all ${darkMode ? 'bg-slate-800 border border-slate-700 text-white' : 'bg-slate-50 border border-slate-200'}`} />
                       <button type="submit" className="w-full bg-gradient-to-r from-blue-600 via-teal-500 to-emerald-500 hover:from-blue-700 hover:via-teal-600 hover:to-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-teal-500/30 active:scale-95 transition-all mt-2">Masuk ke Aplikasi</button>
                     </form>
                     
@@ -885,7 +937,7 @@ const App = () => {
                       </form>
                     ) : (
                       <div className="space-y-6 flex-1">
-                        <input type="number" value={inputOtp} onChange={(e)=>setInputOtp(e.target.value)} placeholder="000000" className={`w-full p-5 text-center text-3xl font-extrabold tracking-[0.5em] rounded-2xl outline-none border-2 focus:border-teal-500 transition-all ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`} />
+                        <input type="number" value={inputOtp} onChange={(e)=>setInputOtp(e.target.value)} placeholder="000000" className={`w-full p-5 text-center text-3xl font-extrabold tracking-[0.5em] rounded-2xl outline-none border-2 focus:border-blue-500 transition-all ${darkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`} />
                         <button onClick={verifyOtpAndRegister} disabled={isLoadingDB} className="w-full bg-gradient-to-r from-blue-600 via-teal-500 to-emerald-500 hover:from-blue-700 hover:via-teal-600 hover:to-emerald-600 text-white font-bold py-4 rounded-2xl shadow-lg shadow-teal-500/30 active:scale-95 transition-all flex justify-center">
                           {isLoadingDB ? <Loader2 className="w-6 h-6 animate-spin"/> : 'Verifikasi OTP & Daftar'}
                         </button>
@@ -916,20 +968,20 @@ const App = () => {
 
             {currentUser.role === 'warga' && (
               <div className="flex md:flex-col w-full justify-around md:justify-start gap-1 md:gap-3">
-                <button onClick={() => setActiveTab('beranda')} className={`flex flex-col md:flex-row items-center md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'beranda' ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><Home className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Beranda</span></button>
-                <button onClick={() => setActiveTab('profil')} className={`flex flex-col md:flex-row items-center md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'profil' ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><User className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Profil</span></button>
+                <button onClick={() => setActiveTab('beranda')} className={`flex flex-col md:flex-row items-center md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'beranda' ? 'text-blue-500 bg-blue-500/10 border-blue-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><Home className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Beranda</span></button>
+                <button onClick={() => setActiveTab('profil')} className={`flex flex-col md:flex-row items-center md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'profil' ? 'text-blue-500 bg-blue-500/10 border-blue-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><User className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Profil</span></button>
                 <button onClick={handleLogout} className="flex flex-col md:flex-row items-center md:px-5 py-2.5 md:py-4 rounded-2xl text-rose-500 hover:bg-rose-500/5 transition-all"><LogOut className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Keluar</span></button>
               </div>
             )}
 
             {currentUser.role === 'rt' && (
               <div className="flex md:flex-col w-full justify-around md:justify-start gap-1 md:gap-3">
-                <button onClick={() => setActiveTab('keluhan')} className={`flex flex-col md:flex-row items-center justify-center md:justify-start flex-1 md:flex-none md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'keluhan' ? 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><AlertTriangle className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Laporan</span></button>
-                <button onClick={() => setActiveTab('jadwal')} className={`flex flex-col md:flex-row items-center justify-center md:justify-start flex-1 md:flex-none md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'jadwal' ? 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><CalendarDays className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Jadwal</span></button>
-                <button onClick={() => setActiveTab('kas')} className={`flex flex-col md:flex-row items-center justify-center md:justify-start flex-1 md:flex-none md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'kas' ? 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><Wallet className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Keuangan</span></button>
-                <button onClick={() => setActiveTab('warga')} className={`hidden md:flex flex-col md:flex-row items-center justify-center md:justify-start flex-1 md:flex-none md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'warga' ? 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><Users className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Data Warga</span></button>
-                <button onClick={() => setActiveTab('warga')} className={`md:hidden flex flex-col items-center justify-center flex-1 py-2.5 transition-all ${activeTab === 'warga' ? 'text-indigo-500' : 'text-slate-400'}`}><Users className="w-6 h-6" /><span className="text-[10px] font-bold mt-1.5">Warga</span></button>
-                <button onClick={() => setActiveTab('penilaian')} className={`hidden md:flex flex-col md:flex-row items-center justify-center md:justify-start flex-1 md:flex-none md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'penilaian' ? 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><Star className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Evaluasi</span></button>
+                <button onClick={() => setActiveTab('keluhan')} className={`flex flex-col md:flex-row items-center justify-center md:justify-start flex-1 md:flex-none md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'keluhan' ? 'text-blue-500 bg-blue-500/10 border-blue-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><AlertTriangle className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Laporan</span></button>
+                <button onClick={() => setActiveTab('jadwal')} className={`flex flex-col md:flex-row items-center justify-center md:justify-start flex-1 md:flex-none md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'jadwal' ? 'text-blue-500 bg-blue-500/10 border-blue-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><CalendarDays className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Jadwal</span></button>
+                <button onClick={() => setActiveTab('kas')} className={`flex flex-col md:flex-row items-center justify-center md:justify-start flex-1 md:flex-none md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'kas' ? 'text-blue-500 bg-blue-500/10 border-blue-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><Wallet className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Keuangan</span></button>
+                <button onClick={() => setActiveTab('warga')} className={`hidden md:flex flex-col md:flex-row items-center justify-center md:justify-start flex-1 md:flex-none md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'warga' ? 'text-blue-500 bg-blue-500/10 border-blue-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><Users className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Data Warga</span></button>
+                <button onClick={() => setActiveTab('warga')} className={`md:hidden flex flex-col items-center justify-center flex-1 py-2.5 transition-all ${activeTab === 'warga' ? 'text-blue-500' : 'text-slate-400'}`}><Users className="w-6 h-6" /><span className="text-[10px] font-bold mt-1.5">Warga</span></button>
+                <button onClick={() => setActiveTab('penilaian')} className={`hidden md:flex flex-col md:flex-row items-center justify-center md:justify-start flex-1 md:flex-none md:px-5 py-2.5 md:py-4 rounded-2xl transition-all ${activeTab === 'penilaian' ? 'text-blue-500 bg-blue-500/10 border-blue-500/20 border' : 'text-slate-500 hover:bg-slate-500/5'}`}><Star className="w-6 h-6 md:w-5 md:h-5 md:mr-4" /><span className="text-[10px] md:text-sm font-bold mt-1.5 md:mt-0">Evaluasi</span></button>
               </div>
             )}
 
@@ -942,7 +994,7 @@ const App = () => {
           </nav>
 
           <div className="flex flex-col min-h-screen relative w-full">
-            <button onClick={() => fetchDataFromDB(true)} disabled={isLoadingDB} className="md:hidden fixed bottom-24 right-5 bg-emerald-600 p-3 rounded-full shadow-lg text-white z-40"><RefreshCw className={`w-6 h-6 ${isLoadingDB ? 'animate-spin' : ''}`} /></button>
+            <button onClick={() => fetchDataFromDB(true)} disabled={isLoadingDB} className="md:hidden fixed bottom-24 right-5 bg-blue-600 p-3 rounded-full shadow-lg text-white z-40"><RefreshCw className={`w-6 h-6 ${isLoadingDB ? 'animate-spin' : ''}`} /></button>
             {renderHeaderDashboard()}
             
             <main className="flex-1 w-full max-w-5xl mx-auto px-5 pb-8 pt-4 md:px-8 flex flex-col">
