@@ -1,16 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Home, Plu3sCircle, List, AlertTriangle, CheckCircle, Clock, 
+  Home, PlusCircle, List, AlertTriangle, CheckCircle, Clock, 
   MapPin, User, MessageSquare, ShieldAlert, Trash2, Zap, 
-  Camera,Image as ImageIcon, Bell, Wallet, LogOut, ArrowRight,
+  Camera, Image as ImageIcon, Bell, Wallet, LogOut, ArrowRight,
   Info, FileText, Activity, Users, PieChart, CalendarDays, Star,
   Sparkles, Loader2, Gift, Lightbulb, TrendingUp, ChevronRight, 
   RefreshCw, Moon, Sun, ShieldCheck, Mail, Megaphone, CalendarClock
 } from 'lucide-react';
 
 // --- KONFIGURASI DATABASE & API ---
-const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/y13eb6zpj32ow'; // Dikembalikan ke API Anda yang valid
-const GEMINI_API_KEY = ''; // Dikosongkan, environment akan otomatis memberikan akses AI yang valid.
+// PENTING: Jika Anda sudah membuat SheetDB baru, ganti 'y13eb6zpj32ow' dengan ID Anda yang baru!
+const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/y13eb6zpj32ow'; 
+// API Key Gemini dikembalikan agar fitur AI menyala kembali
+const GEMINI_API_KEY = 'AIzaSyBB47BOftmEANAy3lPtUYK3t2G1Wthp5B8'; 
 
 // --- FUNGSI AI TERBARU ---
 const callGeminiAPI = async (prompt) => {
