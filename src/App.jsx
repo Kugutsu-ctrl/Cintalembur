@@ -9,14 +9,16 @@ import {
 } from 'lucide-react';
 
 // --- KONFIGURASI DATABASE & API ---
-// PENTING: Jika Anda sudah membuat SheetDB baru, ganti 'y13eb6zpj32ow' dengan ID Anda yang baru!
-const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/y13eb6zpj32ow'; 
-// API Key Gemini dikembalikan agar fitur AI menyala kembali
+// PENTING: Kuota API Anda yang lama habis. Silakan buat API SheetDB baru (pakai email lain) lalu tempel ID-nya di sini!
+const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/7r8jwvqvlyk62'; 
+
+// API Key Gemini dikembalikan dan menggunakan model 1.5 yang didukung
 const GEMINI_API_KEY = 'AIzaSyBB47BOftmEANAy3lPtUYK3t2G1Wthp5B8'; 
 
 // --- FUNGSI AI TERBARU ---
 const callGeminiAPI = async (prompt) => {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
+  // MENGGUNAKAN GEMINI 1.5 FLASH (Versi Publik Paling Stabil)
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
   const payload = { contents: [{ parts: [{ text: prompt }] }] };
   try {
     const response = await fetch(url, { 
@@ -137,6 +139,13 @@ const App = () => {
   const fetchDataFromDB = async (showLoading = true) => {
     if(showLoading) setIsLoadingDB(true);
     try {
+      // Jika URL masih placeholder, hentikan fetch
+      if (SHEETDB_API_URL.includes("MASUKKAN_ID")) {
+        console.warn("Harap masukkan API SheetDB yang valid!");
+        if(showLoading) setIsLoadingDB(false);
+        return;
+      }
+      
       const sheets = ['warga', 'info', 'jadwal', 'keluhan', 'kas', 'penilaian'];
       const results = await Promise.all(sheets.map(s => fetch(`${SHEETDB_API_URL}?sheet=${s}`).then(r => r.json())));
       if(Array.isArray(results[0])) setWargaList(results[0].reverse());
@@ -147,6 +156,7 @@ const App = () => {
       if(Array.isArray(results[5])) setRatings(results[5].reverse());
     } catch (error) {
       console.error("Database fetch error:", error);
+      showToast("⚠️ API Database Limit / Error. Harap perbarui API SheetDB.");
     } finally {
       if(showLoading) setIsLoadingDB(false);
     }
@@ -169,16 +179,10 @@ const App = () => {
   };
 
   // Muat data saat aplikasi pertama buka
-  useEffect(() => { fetchDataFromDB(true); }, []);
-
-  // --- AUTO REFRESH GLOBAL (Anti-Delay) ---
-  useEffect(() => {
-    let intervalId;
-    if (currentUser) {
-      intervalId = setInterval(() => { fetchDataFromDB(false); }, 15000); 
-    }
-    return () => clearInterval(intervalId);
-  }, [currentUser]);
+  useEffect(() => { 
+    fetchDataFromDB(true); 
+    // AUTO-REFRESH DIHAPUS TOTAL AGAR KUOTA SHEETDB TIDAK HABIS!
+  }, []);
 
   // --- AUTH & OTP HANDLERS ---
   const handleLogin = (e) => {
@@ -241,7 +245,7 @@ const App = () => {
     const newKeluhan = { id: Date.now().toString(), sender: `${currentUser.name} (${currentUser.profile})`, description: '🚨 LAPORAN DARURAT: Warga ini menekan tombol panik dan membutuhkan bantuan segera di lokasi!', photo: '', status: 'Menunggu', date: new Date().toLocaleDateString('id-ID'), rtReply: '' };
     await postToDB('keluhan', newKeluhan);
     setComplaints(prev => [newKeluhan, ...prev]);
-    showToast('🚨 Laporan darurat tersimpan! Menunggu respons RT.');
+    showToast('🚨 Laporan darurat tersimpan! Silakan hubungi RT jika genting.');
   };
 
   // --- RENDERING COMPONENTS ---
