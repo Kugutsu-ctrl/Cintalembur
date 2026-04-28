@@ -10,7 +10,7 @@ import {
 
 // --- KONFIGURASI DATABASE & API ---
 // PENTING: Kuota API Anda yang lama habis. Silakan buat API SheetDB baru (pakai email lain) lalu tempel ID-nya di sini!
-const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/7r8jwvqvlyk62'; 
+const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/xxdls4lybkaz1'; 
 
 // API Key Gemini dikembalikan dan menggunakan model 1.5 yang didukung
 const GEMINI_API_KEY = 'AIzaSyBB47BOftmEANAy3lPtUYK3t2G1Wthp5B8'; 
