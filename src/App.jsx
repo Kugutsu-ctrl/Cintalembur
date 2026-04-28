@@ -1,20 +1,20 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  Home, PlusCircle, List, AlertTriangle, CheckCircle, Clock, 
+  Home, Plu3sCircle, List, AlertTriangle, CheckCircle, Clock, 
   MapPin, User, MessageSquare, ShieldAlert, Trash2, Zap, 
-  Camera, Image as ImageIcon, Bell, Wallet, LogOut, ArrowRight,
+  Camera,Image as ImageIcon, Bell, Wallet, LogOut, ArrowRight,
   Info, FileText, Activity, Users, PieChart, CalendarDays, Star,
   Sparkles, Loader2, Gift, Lightbulb, TrendingUp, ChevronRight, 
   RefreshCw, Moon, Sun, ShieldCheck, Mail, Megaphone, CalendarClock
 } from 'lucide-react';
 
 // --- KONFIGURASI DATABASE & API ---
-const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/y13eb6zpj32ow';
-const GEMINI_API_KEY = 'AIzaSyBB47BOftmEANAy3lPtUYK3t2G1Wthp5B8';
+const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/y13eb6zpj32ow'; // Dikembalikan ke API Anda yang valid
+const GEMINI_API_KEY = ''; // Dikosongkan, environment akan otomatis memberikan akses AI yang valid.
 
-// --- FUNGSI AI YANG SUDAH DIPERBARUI UNTUK MENANGKAP ERROR ---
+// --- FUNGSI AI TERBARU ---
 const callGeminiAPI = async (prompt) => {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${GEMINI_API_KEY}`;
   const payload = { contents: [{ parts: [{ text: prompt }] }] };
   try {
     const response = await fetch(url, { 
@@ -26,7 +26,6 @@ const callGeminiAPI = async (prompt) => {
     if (!response.ok) {
       const errorData = await response.json();
       console.error("Detail Error Gemini dari Google:", errorData);
-      // Tangkap pesan error spesifik dari Google
       const errorMessage = errorData.error?.message || `HTTP Error ${response.status}`;
       return { success: false, error: errorMessage };
     }
@@ -170,14 +169,11 @@ const App = () => {
   // Muat data saat aplikasi pertama buka
   useEffect(() => { fetchDataFromDB(true); }, []);
 
-  // --- AUTO REFRESH GLOBAL (Anti-Delay untuk Semua Info & Keluhan) ---
+  // --- AUTO REFRESH GLOBAL (Anti-Delay) ---
   useEffect(() => {
     let intervalId;
     if (currentUser) {
-      // Polling diam-diam setiap 15 detik agar semua data ter-update
-      intervalId = setInterval(() => {
-        fetchDataFromDB(false); 
-      }, 15000); 
+      intervalId = setInterval(() => { fetchDataFromDB(false); }, 15000); 
     }
     return () => clearInterval(intervalId);
   }, [currentUser]);
@@ -186,19 +182,31 @@ const App = () => {
   const handleLogin = (e) => {
     e.preventDefault();
     if (!loginEmail || !loginPassword) return showToast('Lengkapi email dan password!');
+    
+    // Pembersihan spasi ekstra
+    const cleanEmail = loginEmail.trim().toLowerCase();
+    const cleanPassword = loginPassword.trim();
+
     if (loginRole === 'rt') {
-      if (loginEmail.toLowerCase() === 'rt@cintalembur.com' && loginPassword === 'rt_rahasia_2026') {
-        setCurrentUser({ role: 'rt', name: 'Bapak RT', email: loginEmail });
+      if (cleanEmail === 'rt@cintalembur.com' && cleanPassword === 'rt_rahasia_2026') {
+        setCurrentUser({ role: 'rt', name: 'Bapak RT', email: cleanEmail });
         setView('rt-dashboard'); setActiveTab('keluhan'); showToast('Selamat bertugas, Bapak RT!');
       } else { showToast('❌ Akses khusus RT ditolak!'); }
       return;
     }
-    const userMatch = wargaList.find(w => w.email === loginEmail && w.password === loginPassword);
+
+    const userMatch = wargaList.find(w => 
+      (w.email || '').trim().toLowerCase() === cleanEmail && 
+      (w.password || '').trim() === cleanPassword
+    );
+
     if (userMatch) {
       let kateg = parseInt(userMatch.umur) >= 27 ? 'Orang Tua' : (parseInt(userMatch.umur) >= 14 ? 'Remaja' : 'Anak-anak');
       setCurrentUser({ ...userMatch, role: 'warga', profile: `${userMatch.sebutan}, ${kateg}` });
       setView('warga-dashboard'); setActiveTab('beranda'); showToast(`Halo, ${userMatch.nama}!`);
-    } else { showToast('❌ Email atau Password salah!'); }
+    } else { 
+      showToast('❌ Email atau Password salah!'); 
+    }
   };
 
   const startRegistration = (e) => {
